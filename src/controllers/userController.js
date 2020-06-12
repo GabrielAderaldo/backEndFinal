@@ -10,6 +10,11 @@ const crypto = require('crypto');
 const mailer = require('../modules/mailer');
 
 
+function geracaoToken(params = {}){
+    return jwt.sign(params,auth.secret,{expiresIn: 86400, /*Espira em um dia*/});
+}
+
+
 /**
  * Já que estamos trabalhando como se fosse uma API feita para
  * integração com um Front separado... Vai ai uma documentação 
@@ -26,20 +31,7 @@ router.post('/registro',async (req,res) =>{
         if(await User.findOne({email})){
             return res.status(400).send({error:"Email já cadastrado!"});
         }
-
         const user = await User.create(req.body);
-
-       
-       /*
-        const{email} = req.body
-        if(await User.findOne({email}))
-        return res.status(400).send("Esse email já esta cadastrado")
-
-        const user = await User.create(req.body);
-        user.senha = undefined;
-        return res.send({user});
-
-        */
         user.senha = undefined;
         return res.send({user,
         token: geracaoToken({id:user.id}),
@@ -50,18 +42,15 @@ router.post('/registro',async (req,res) =>{
     }
 });
 
+/**Alteração*/
 
-function geracaoToken(params = {}){
-    return jwt.sign(params,auth.secret,{expiresIn: 86400, /*Espira em um dia*/});
-}
-
+/**Rota de autenticação do usuario, ultilizar ela para o login e a senha, ou seja... o Usuario só irá acessar o site dps que essa rota for ativada... */
 router.post('/autenticacao', async (req,res) => {
     const {email,senha} = req.body;
     const user = await User.findOne({email}).select('+senha');
     if(!user){return res.status(400).send({error:"Email não Cadastrado"})}
     if(!await bcr.compare(senha,user.senha)){res.status(400).send("Senha incorreta")}
     user.senha = undefined;
-     
     const token = //jwt.sign({id:user.id},auth.secret,{expiresIn: 86400, /*Espira em um dia*/});
     res.send({user,
     token: geracaoToken({id:user.id}),
@@ -113,15 +102,47 @@ router.post('/esqueciSenha', async (req,res)=> {
 });
 
 /*Rota de listagem de usuario*/
-router.get('/',async(req,res)=>{
+
+
+/**Criando os metodos do usuario */
+/**Criando usuario*/
+router.post('/criarConta', async (req,res) => {
+    const {email,senha} = req.body;
     try{
-        const user = await User.find()
-        return res.send({user})
+        
+        if(await User.findOne({email})){
+            return res.status(400).send({error:"Email já cadastrado!"});
+        }
+        const user = await User.create(req.body);
+        user.senha = undefined;
+        return res.send({user,
+        token: geracaoToken({id:user.id}),
+        });
+
+    }catch(err){
+        return res.status(400).send({error: 'Falha ao registrar '+'Verifique se os dados estão corretos!'});
+    }
+});
+
+/*Listando todos os usuarios*/
+router.get('/listagemDeUsuarios',async(req,res)=>{
+    try{
+        const usuario = await User.find()
+        return res.send({usuario})
     }catch(err){
         res.status(400).send({error:'erro nenhum usuario encontrado'})
     }
 });
 
-
+/*Listando o usuario pelo email usuarios*/
+router.get('/:usuarioId',async(req,res)=>{
+    const {email} = req.body;
+    try{
+        await Playlist.findOne({email: req.param.email.toString()});
+        return res.send({user})
+    }catch(err){
+        res.status(400).send({error:'erro nenhum usuario encontrado'})
+    }
+});
 
 module.exports = app => app.use('/user',router);
