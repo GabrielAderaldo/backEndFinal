@@ -8,6 +8,8 @@ const jwt = require('jsonwebtoken');
 const auth = require('../config/auth.json');
 const crypto = require('crypto');
 const mailer = require('../modules/mailer');
+const { findById, remove } = require('../models/user');
+const { send } = require('process');
 
 
 function geracaoToken(params = {}){
@@ -46,15 +48,18 @@ router.post('/registro',async (req,res) =>{
 
 /**Rota de autenticação do usuario, ultilizar ela para o login e a senha, ou seja... o Usuario só irá acessar o site dps que essa rota for ativada... */
 router.post('/autenticacao', async (req,res) => {
+    const statusLogin = 'Logado com sucesso!';
     const {email,senha} = req.body;
     const user = await User.findOne({email}).select('+senha');
     if(!user){return res.status(400).send({error:"Email não Cadastrado"})}
     if(!await bcr.compare(senha,user.senha)){res.status(400).send("Senha incorreta")}
     user.senha = undefined;
     const token = //jwt.sign({id:user.id},auth.secret,{expiresIn: 86400, /*Espira em um dia*/});
-    res.send({user,
+    res.send({statusLogin,user,
     token: geracaoToken({id:user.id}),
     });
+
+    
     
 });
 //Rota de esqueci a senha do usuario, infelismente está com problema, até segunda ajeito.
@@ -134,15 +139,40 @@ router.get('/listagemDeUsuarios',async(req,res)=>{
     }
 });
 
-/*Listando o usuario pelo email usuarios*/
-router.get('/:usuarioId',async(req,res)=>{
-    const {email} = req.body;
+/*Listando o usuario pelo id usuarios*/
+router.get('/listagemId/:id',async(req,res)=>{
     try{
-        await Playlist.findOne({email: req.param.email.toString()});
-        return res.send({user})
+        User.findById(req.params.id).then(consultaId =>{
+            if(!consultaId){return res.status(400).send({error: 'Id de usuario não encontrado!'});}
+            return res.status(200).json(consultaId);
+        }
+      );
+
     }catch(err){
-        res.status(400).send({error:'erro nenhum usuario encontrado'})
+        console.log(err);
+        return res.status(400).send({error:'erro nenhum usuario encontrado'})
     }
+    
+});
+/*Busca pelo Email*/
+
+/*Removendo um usuario pelo id*/
+router.delete('/de/:id',async(req,res)=>{
+    try{
+       
+
+
+    }catch(err){
+    
+      
+
+    }
+    
 });
 
+/*Droppar todos do banco de dados*/
+router.get('/delete',async(res,req)=>{
+   
+    return send("Banco Deletado");
+});
 module.exports = app => app.use('/user',router);
